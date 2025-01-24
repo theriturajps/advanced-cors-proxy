@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Advanced CORS Proxy</title>
+	<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body class="bg-gray-100 p-4">
+	<div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
+		<h1 class="text-2xl font-bold mb-4 text-center">Advanced CORS Proxy</h1>
+		<form id="proxyForm" class="space-y-4">
+			<div class="grid md:grid-cols-2 gap-4">
+				<div>
+					<label class="block mb-2">URL</label>
+					<input type="url" id="urlInput" required class="w-full px-3 py-2 border rounded">
+				</div>
+				<div>
+					<label class="block mb-2">Method</label>
+					<select id="methodSelect" class="w-full px-3 py-2 border rounded">
+						<option>GET</option>
+						<option>POST</option>
+						<option>PUT</option>
+						<option>DELETE</option>
+					</select>
+				</div>
+			</div>
+			<div>
+				<label class="block mb-2">Content Type</label>
+				<select id="contentTypeSelect" class="w-full px-3 py-2 border rounded">
+					<option>application/json</option>
+					<option>application/x-www-form-urlencoded</option>
+					<option>text/plain</option>
+					<option>application/xml</option>
+				</select>
+			</div>
+			<div>
+				<label class="block mb-2">Headers (JSON)</label>
+				<textarea id="headersInput" class="w-full px-3 py-2 border rounded"
+					placeholder='{"Authorization": "Bearer token"}'></textarea>
+			</div>
+			<div>
+				<label class="block mb-2">Request Body</label>
+				<textarea id="bodyInput" class="w-full px-3 py-2 border rounded"
+					placeholder='{"key": "value"} or key1=value1&key2=value2'></textarea>
+			</div>
+			<button type="submit" id="submitButton"
+				class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 relative">
+				<span id="buttonText">Send Request</span>
+				<div id="loadingSpinner" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+					<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+						viewBox="0 0 24 24">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+						<path class="opacity-75" fill="currentColor"
+							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+						</path>
+					</svg>
+				</div>
+			</button>
+		</form>
+		<div id="statusContainer" class="mt-4 hidden">
+			<div id="responseStatus" class="font-bold mb-2 p-2 rounded"></div>
+			<pre id="responseArea"
+				class="bg-gray-100 p-3 rounded max-h-96 overflow-auto whitespace-pre-wrap break-words"></pre>
+		</div>
+	</div>
+
+	<script>
+		document.getElementById('proxyForm').addEventListener('submit', async (e) => {
+			e.preventDefault();
+
+			// UI Elements
+			const submitButton = document.getElementById('submitButton');
+			const buttonText = document.getElementById('buttonText');
+			const loadingSpinner = document.getElementById('loadingSpinner');
+			const statusContainer = document.getElementById('statusContainer');
+			const responseArea = document.getElementById('responseArea');
+			const responseStatus = document.getElementById('responseStatus');
+
+			// Reset previous state
+			statusContainer.classList.add('hidden');
+			submitButton.disabled = true;
+			buttonText.classList.add('invisible');
+			loadingSpinner.classList.remove('hidden');
+
+			try {
+				const payload = {
+					url: document.getElementById('urlInput').value,
+					method: document.getElementById('methodSelect').value,
+					contentType: document.getElementById('contentTypeSelect').value,
+					headers: JSON.parse(document.getElementById('headersInput').value || '{}'),
+					body: document.getElementById('contentTypeSelect').value === 'application/json'
+						? JSON.parse(document.getElementById('bodyInput').value || 'null')
+						: document.getElementById('bodyInput').value
+				};
+
+				const response = await axios.post('/proxy', payload);
+
+				// Display status
+				statusContainer.classList.remove('hidden');
+				responseStatus.textContent = `Status: ${response.data.status}`;
+				responseStatus.className = 'font-bold mb-2 p-2 rounded bg-green-100 text-green-800';
+
+				// Format response based on content type
+				const contentType = document.getElementById('contentTypeSelect').value;
+				if (contentType === 'application/json') {
+					responseArea.textContent = JSON.stringify(response.data.data, null, 2);
+				} else {
+					responseArea.textContent = response.data.data;
+				}
+			} catch (error) {
+				statusContainer.classList.remove('hidden');
+				responseStatus.textContent = 'Error: ' + (error.response?.data?.error || error.message);
+				responseStatus.className = 'font-bold mb-2 p-2 rounded bg-red-100 text-red-800';
+				responseArea.textContent = JSON.stringify(
+					error.response?.data || { error: error.message },
+					null, 2
+				);
+			} finally {
+				// Restore button state
+				submitButton.disabled = false;
+				buttonText.classList.remove('invisible');
+				loadingSpinner.classList.add('hidden');
+			}
+		});
+	</script>
+</body>
+
+</html>
